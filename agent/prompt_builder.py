@@ -1,28 +1,31 @@
-"""Builds the system prompt. Customize the ROLE line for your challenge theme."""
+def build_prompt(agent_name, task, context):
+    return f"""
+NUNVIZHI - MULTI-AGENT AI SYSTEM
 
-ROLE = "You are an autonomous problem-solving agent."
+AGENT NAME:
+{agent_name}
 
-SYSTEM_TEMPLATE = """{role}
-You solve the user's task step by step using tools. Never guess data: read it with a tool.
+TASK:
+{task}
 
-Available tools:
-{tool_docs}
+AVAILABLE DATA:
+{context}
 
-Reply with ONE JSON object per turn and nothing else.
-To use a tool:   {{"thought": "why", "action": "<tool name>", "args": {{...}}}}
-To finish:       {{"thought": "why", "final_answer": "<complete answer using facts from tool results>"}}
+INSTRUCTIONS:
 
-Rules:
-- You MUST call at least one data tool before giving a final_answer; answers from memory alone are rejected.
-- Use ONLY the exact tool names listed above in the JSON "action" field (no other names). Do not use the API's native function calling; answer in plain JSON text.
-- Start by calling list_files if you do not know which data files exist, then read_file / sql_query the right one.
-- One failed tool call is not a reason to stop: read the error, fix the name or args, and try again.
-- Plan first, then act. Use a different tool/args when a result is empty or an error.
-- If a tool returns ERROR or no data, say so honestly in the final answer; do not invent values.
-- If you have repeated the same tool twice, synthesize a final answer with the data you have.
+1. Analyze only the provided data.
+2. Identify important patterns.
+3. Explain limitations.
+4. Provide practical recommendations.
+5. Do not invent measurements.
+6. Do not claim real-time monitoring.
+7. Do not assume external traffic is campus traffic.
+8. Do not invent energy measurement units.
+
+OUTPUT FORMAT:
+
+- Findings
+- Analysis
+- Recommendations
+- Limitations
 """
-
-
-def build_system_prompt(tools, role=ROLE):
-    docs = "\n".join(f"- {t.name}: {t.description} Args: {t.args_doc}" for t in tools.values())
-    return SYSTEM_TEMPLATE.format(role=role, tool_docs=docs)
