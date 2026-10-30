@@ -1,4 +1,11 @@
-student,topic,score
-S1,arrays,82
-S1,recursion,31
-S1,sorting,64
+
+# ==================================================
+# NUNVIZHI - AI AGENT PACKAGE
+# ==================================================
+
+"""
+NUNVIZHI - Multi-Agent AI for Smart Campus
+Energy and Traffic Optimization.
+"""
+
+# Marks this directory as a Python package.
