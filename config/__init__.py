@@ -1,9 +1,39 @@
-"""Runtime settings. Change these, not the code."""
-import os
 
-MAX_ITERATIONS = 6          # hard cap on reasoning steps (the judges check for a guard like this)
-MAX_SAME_TOOL_CALLS = 2     # same tool + same args more than this => force a final answer
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")  # Groq retires models; override via .env
-TEMPERATURE = 0.2
-DATA_DIR = os.environ.get("AGENTX_DATA_DIR", os.path.join(os.path.dirname(os.path.dirname(__file__)), "data"))
+import pandas as pd
+import zipfile
+import gzip
+import io
+from pathlib import Path
+
+BASE = Path(r"D:\CampusOptimizer")
+DATA = BASE / "data"
+DATA.mkdir(exist_ok=True)
+
+# Convert energy Excel to CSV
+energy = pd.read_excel(
+    BASE / "hourly load profile of NITPY.xlsx",
+    sheet_name="Sheet1",
+    header=None
+)
+energy.columns = ["load"]
+energy.to_csv(DATA / "energy.csv", index=False)
+
+# Extract traffic CSV from ZIP
+with zipfile.ZipFile(
+    BASE / "metro+interstate+traffic+volume.zip"
+) as archive:
+    filename = next(
+        name for name in archive.namelist()
+        if name.lower().endswith((".csv", ".csv.gz"))
+    )
+    content = archive.read(filename)
+
+    if filename.lower().endswith(".gz"):
+        content = gzip.decompress(content)
+
+traffic = pd.read_csv(io.BytesIO(content))
+traffic.to_csv(DATA / "traffic.csv", index=False)
+
+print("Energy CSV created:", len(energy), "rows")
+print("Traffic CSV created:", len(traffic), "rows")
+print("Files saved inside:", DATA)
