@@ -1,31 +1,42 @@
-def build_prompt(agent_name, task, context):
-    return f"""
-NUNVIZHI - MULTI-AGENT AI SYSTEM
+import os
+from groq import Groq
+from dotenv import load_dotenv
 
-AGENT NAME:
-{agent_name}
+load_dotenv()
 
-TASK:
-{task}
 
-AVAILABLE DATA:
-{context}
+class GroqLLM:
+    def __init__(self, model="openai/gpt-oss-20b"):
+        self.model = model
+        api_key = os.getenv("GROQ_API_KEY")
 
-INSTRUCTIONS:
+        if not api_key:
+            raise ValueError(
+                "GROQ_API_KEY not found in environment."
+            )
 
-1. Analyze only the provided data.
-2. Identify important patterns.
-3. Explain limitations.
-4. Provide practical recommendations.
-5. Do not invent measurements.
-6. Do not claim real-time monitoring.
-7. Do not assume external traffic is campus traffic.
-8. Do not invent energy measurement units.
+        self.client = Groq(api_key=api_key)
 
-OUTPUT FORMAT:
+    def generate(self, prompt):
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an AI assistant for NUNVIZHI, "
+                        "a campus energy and traffic intelligence "
+                        "platform. Use only provided evidence. "
+                        "Clearly state uncertainty."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.2,
+            max_tokens=1200
+        )
 
-- Findings
-- Analysis
-- Recommendations
-- Limitations
-"""
+        return response.choices[0].message.content or ""
