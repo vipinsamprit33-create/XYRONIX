@@ -1,53 +1,99 @@
-"""Offline tests (no API key). Run: python -m unittest discover tests"""
-import json
-import subprocess
+
+import os
 import sys
-import unittest
+from pathlib import Path
 
-from agent.core import AgentExecutor, parse_json
-from tools import build_tools
+from dotenv import load_dotenv
 
+BASE_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(BASE_DIR))
 
-class Scripted:
-    def __init__(self, replies):
-        self.replies = list(replies)
-
-    def generate(self, system, messages):
-        return self.replies.pop(0) if self.replies else '{"final_answer": "done"}'
+load_dotenv(BASE_DIR / ".env")
 
 
-class AgentTests(unittest.TestCase):
-    def test_parse_json_handles_fences(self):
-        self.assertEqual(parse_json('text ```json\n{"a": 1}\n``` more'), {"a": 1})
+def test_datasets():
+    from tools.data_query import (
+        get_energy_summary,
+        get_traffic_summary
+    )
 
-    def test_tool_call_then_final(self):
-        llm = Scripted(['{"thought":"t","action":"read_file","args":{"filename":"scores.csv"}}',
-                        '{"thought":"t","final_answer":"recursion is weak"}'])
-        answer, trace = AgentExecutor(llm, build_tools()).run("q")
-        self.assertEqual(answer, "recursion is weak")
-        self.assertEqual(trace[0]["tool"], "read_file")
-        self.assertIn("recursion", trace[0]["observation"])
+    energy = get_energy_summary()
+    traffic = get_traffic_summary()
 
-    def test_tool_error_becomes_observation(self):
-        llm = Scripted(['{"action":"read_file","args":{"filename":"nope.csv"}}', '{"final_answer":"x"}'])
-        _, trace = AgentExecutor(llm, build_tools()).run("q")
-        self.assertTrue(trace[0]["observation"].startswith("ERROR"))
+    assert energy["valid_readings"] == 8760
+    assert traffic["total_records"] == 48204
 
-    def test_iteration_cap(self):
-        llm = Scripted(['{"action":"list_files","args":{}}'] * 20)
-        answer, trace = AgentExecutor(llm, build_tools(), max_iterations=3).run("q")
-        self.assertLessEqual(len(trace), 3)
+    print("PASS: Energy dataset - 8760 readings")
+    print("PASS: Traffic dataset - 48204 records")
 
-    def test_sql_and_calculator(self):
-        t = build_tools()
-        self.assertIn("recursion", t["sql_query"].execute(filename="scores.csv", sql="SELECT topic FROM data WHERE score < 40"))
-        self.assertEqual(t["calculator"].execute(expression="2+2*10"), 22)
 
-    def test_cli_contract(self):
-        out = subprocess.run([sys.executable, "main.py", "--json", "--dry-run", "hi"], capture_output=True, text=True)
-        d = json.loads(out.stdout.strip().splitlines()[-1])
-        self.assertTrue(d["answer"] and len(d["trace"]) >= 2)
+def test_calculator():
+    from tools.calculator import (
+        calculate_statistics,
+        percentage_change
+    )
+
+    result = calculate_statistics([10, 20, 30, 40, 50])
+    assert result["average"] == 30
+
+    change = percentage_change(100, 80)
+    assert change["percentage_change"] == -20
+
+    print("PASS: Calculator")
+    print("PASS: Percentage change")
+
+
+def test_ai_agent():
+    from groq import Groq
+
+    api_key = os.getenv("GROQ_API_KEY")
+
+    if not api_key:
+        print("SKIP: Groq API key not configured")
+        return
+
+    client = Groq(api_key=api_key)
+
+    response = client.chat.completions.create(
+        model="openai/gpt-oss-20b",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are NUNVIZHI, an AI-powered "
+                    "campus energy and traffic assistant."
+                )
+            },
+            {
+                "role": "user",
+                "content": (
+                    "Explain in two short sentences how "
+                    "AI can support campus energy management."
+                )
+            }
+        ],
+        max_tokens=150
+    )
+
+    answer = response.choices[0].message.content
+
+    assert answer, "AI returned an empty response"
+
+    print("PASS: Groq AI Agent")
+    print(answer.encode("ascii", errors="replace").decode())
+
+
+def main():
+    print("=" * 45)
+    print("NUNVIZHI - AI AGENT TEST")
+    print("=" * 45)
+
+    test_calculator()
+    test_datasets()
+    test_ai_agent()
+
+    print("\nAll executed tests passed!")
 
 
 if __name__ == "__main__":
-    unittest.main()
+    main()
