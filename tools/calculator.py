@@ -1,26 +1,66 @@
-import ast
-import operator as op
 
-from tools import Tool
-
-_OPS = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul, ast.Div: op.truediv,
-        ast.Pow: op.pow, ast.Mod: op.mod, ast.USub: op.neg, ast.FloorDiv: op.floordiv}
+import math
+from statistics import mean, median
 
 
-def _eval(node):
-    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
-        return node.value
-    if isinstance(node, ast.BinOp) and type(node.op) in _OPS:
-        return _OPS[type(node.op)](_eval(node.left), _eval(node.right))
-    if isinstance(node, ast.UnaryOp) and type(node.op) in _OPS:
-        return _OPS[type(node.op)](_eval(node.operand))
-    raise ValueError("only numbers and + - * / ** % // are allowed")
+def calculate_statistics(values):
+    """
+    Calculate statistics for numerical observations.
+    """
+    if not isinstance(values, (list, tuple)):
+        raise ValueError("Values must be a list or tuple.")
+
+    numbers = []
+
+    for value in values:
+        number = float(value)
+
+        if not math.isfinite(number):
+            raise ValueError("Values must be finite numbers.")
+
+        numbers.append(number)
+
+    if not numbers:
+        raise ValueError("No values provided.")
+
+    return {
+        "count": len(numbers),
+        "total": round(sum(numbers), 2),
+        "average": round(mean(numbers), 2),
+        "median": round(median(numbers), 2),
+        "minimum": round(min(numbers), 2),
+        "maximum": round(max(numbers), 2)
+    }
 
 
-class Calculator(Tool):
-    name = "calculator"
-    description = "Evaluate an arithmetic expression exactly (never do maths in your head)."
-    args_doc = '{"expression": "2 + 2 * 10"}'
+def percentage_change(old_value, new_value):
+    """
+    Calculate percentage increase or decrease.
+    """
+    old_value = float(old_value)
+    new_value = float(new_value)
 
-    def execute(self, expression):
-        return _eval(ast.parse(str(expression), mode="eval").body)
+    if not all(map(math.isfinite, [old_value, new_value])):
+        raise ValueError("Values must be finite.")
+
+    if old_value == 0:
+        raise ValueError(
+            "Cannot calculate percentage change from zero."
+        )
+
+    change = (
+        (new_value - old_value) / abs(old_value)
+    ) * 100
+
+    return {
+        "old_value": old_value,
+        "new_value": new_value,
+        "percentage_change": round(change, 2)
+    }
+
+
+if __name__ == "__main__":
+    sample = [10, 20, 30, 40, 50]
+
+    print(calculate_statistics(sample))
+    print(percentage_change(100, 80))
